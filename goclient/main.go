@@ -51,10 +51,19 @@ func main() {
 			return
 		}
 
+		idToken, ok := token.Extra("id_token").(string)
+
+		if !ok {
+			http.Error(writer, "Failed to generate IDToken", http.StatusInternalServerError)
+			return
+		}
+
 		resp := struct {
 			AccessToken *oauth2.Token
+			IDToken     string
 		}{
 			token,
+			idToken,
 		}
 
 		data, err := json.Marshal(resp)
