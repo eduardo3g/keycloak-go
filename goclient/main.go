@@ -7,6 +7,7 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 var (
@@ -35,6 +36,35 @@ func main() {
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		http.Redirect(writer, request, config.AuthCodeURL(state), http.StatusFound)
+	})
+
+	http.HandleFunc("/auth/callback", func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Query().Get("state") != state {
+			http.Error(writer, "Invalid state", http.StatusBadRequest)
+			return
+		}
+
+		token, err := config.Exchange(ctx, request.URL.Query().Get("code"))
+
+		if err != nil {
+			http.Error(writer, "Failed to exchange the token", http.StatusInternalServerError)
+			return
+		}
+
+		resp := struct {
+			AccessToken *oauth2.Token
+		}{
+			token,
+		}
+
+		data, err := json.Marshal(resp)
+
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		writer.Write(data)
 	})
 
 	log.Fatal(http.ListenAndServe(":8081", nil))
