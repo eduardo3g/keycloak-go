@@ -45,25 +45,31 @@ func main() {
 		}
 
 		token, err := config.Exchange(ctx, request.URL.Query().Get("code"))
-
 		if err != nil {
 			http.Error(writer, "Failed to exchange the token", http.StatusInternalServerError)
 			return
 		}
 
 		idToken, ok := token.Extra("id_token").(string)
-
 		if !ok {
 			http.Error(writer, "Failed to generate IDToken", http.StatusInternalServerError)
+			return
+		}
+
+		userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
+		if err != nil {
+			http.Error(writer, "Failed to get UserInfo", http.StatusInternalServerError)
 			return
 		}
 
 		resp := struct {
 			AccessToken *oauth2.Token
 			IDToken     string
+			UserInfo    *oidc.UserInfo
 		}{
 			token,
 			idToken,
+			userInfo,
 		}
 
 		data, err := json.Marshal(resp)
